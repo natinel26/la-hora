@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>¿Qué hora es? – Lernspiel (4x5 Layout)</title>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            text-align: center;
+            background-color: #f0f8ff;
+            margin: 0;
+            padding: 20px;
+        }
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 10px;
+            max-width: 800px;
+            margin: 20px auto;
+        }
+        .card {
+            width: 100%;
+            height: 100px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: scale(1.05);
+        }
+        .time-card {
+            background-color: #ffcccc;
+            border: 2px solid #ff6b6b;
+        }
+        .activity-card {
+            background-color: #cce5ff;
+            border: 2px solid #4d94ff;
+        }
+        .flipped {
+            background-color: #e6ffe6;
+            border: 2px solid #4CAF50;
+        }
+        .feedback {
+            margin: 20px;
+            padding: 10px;
+            font-size: 18px;
+            min-height: 30px;
+        }
+        .correct {
+            color: #4CAF50;
+        }
+        .incorrect {
+            color: #f44336;
+        }
+        #restart-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #restart-btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>¿A qué hora...?</h1>
+    <p>Forma frases con una tarjeta roja y una azul.</p>
+    <div class="feedback" id="feedback"></div>
+    <div class="game-board" id="game-board"></div>
+    <button id="restart-btn">Nuevo Juego</button>
+
+    <script>
+        // Datos del juego
+        const horas = [
+            "a las dos", "a las cinco y cuarto", "a las nueve y media",
+            "a las seis y veinte", "a las diez menos diez", "a las siete de la mañana",
+            "a las tres de la tarde", "a las once de la noche", "a las catorce horas",
+            "a las ocho y cuarto"
+        ];
+
+        const actividades = [
+            { actividad: "desayunar", pronombre: "yo" },
+            { actividad: "estudiar", pronombre: "tú" },
+            { actividad: "jugar al fútbol", pronombre: "él" },
+            { actividad: "cocinar", pronombre: "ella" },
+            { actividad: "bailar", pronombre: "nosotros" },
+            { actividad: "ver la tele", pronombre: "vosotros" },
+            { actividad: "dormir", pronombre: "ellos" },
+            { actividad: "escuchar música", pronombre: "yo" },
+            { actividad: "ir al parque", pronombre: "nosotros" },
+            { actividad: "hacer deporte", pronombre: "tú" }
+        ];
+
+        // Variables del juego
+        let cartas = [];
+        let selectedCards = [];
+        let pairsFound = 0;
+        let gameOver = false;
+
+        // Inicializar el juego
+        function initGame() {
+            cartas = [];
+            selectedCards = [];
+            pairsFound = 0;
+            gameOver = false;
+            document.getElementById('feedback').textContent = "";
+            document.getElementById('feedback').className = "feedback";
+
+            // Mezclar cartas
+            const shuffledHoras = [...horas].sort(() => Math.random() - 0.5);
+            const shuffledActividades = [...actividades].sort(() => Math.random() - 0.5);
+
+            // Crear 10 cartas de hora y 10 de actividad
+            for (let i = 0; i < 10; i++) {
+                cartas.push({
+                    id: `hora-${i}`,
+                    type: "time",
+                    content: shuffledHoras[i],
+                    flipped: false
+                });
+                cartas.push({
+                    id: `actividad-${i}`,
+                    type: "activity",
+                    content: `${shuffledActividades[i].actividad} (${shuffledActividades[i].pronombre})`,
+                    pronombre: shuffledActividades[i].pronombre,
+                    actividad: shuffledActividades[i].actividad,
+                    flipped: false
+                });
+            }
+
+            // Mezclar todas las cartas
+            cartas.sort(() => Math.random() - 0.5);
+            renderCards();
+        }
+
+        // Renderizar cartas en 4x5
+        function renderCards() {
+            const gameBoard = document.getElementById('game-board');
+            gameBoard.innerHTML = "";
+
+            cartas.forEach(carta => {
+                const cardElement = document.createElement('div');
+                cardElement.className = `card ${carta.type}-card ${carta.flipped ? 'flipped' : ''}`;
+                cardElement.textContent = carta.flipped ? carta.content : "?";
+                cardElement.addEventListener('click', () => flipCard(carta.id));
+                gameBoard.appendChild(cardElement);
+            });
+        }
+
+        // Voltear una carta
+        function flipCard(id) {
+            if (gameOver) return;
+
+            const carta = cartas.find(c => c.id === id);
+            if (!carta || carta.flipped || selectedCards.length >= 2) return;
+
+            carta.flipped = true;
+            selectedCards.push(carta);
+            renderCards();
+
+            if (selectedCards.length === 2) {
+                setTimeout(checkPair, 500); // Pequeña pausa para ver las cartas
+            }
+        }
+
+        // Verificar pareja
+        function checkPair() {
+            const [carta1, carta2] = selectedCards;
+
+            // Combinaciones correctas (ejemplos)
+            const correctPairs = [
+                { hora: "a las siete de la mañana", actividad: "desayunar", pronombre: "yo" },
+                { hora: "a las once de la noche", actividad: "dormir", pronombre: "ellos" },
+                { hora: "a las tres de la tarde", actividad: "jugar al fútbol", pronombre: "él" },
+                { hora: "a las seis y veinte", actividad: "ver la tele", pronombre: "vosotros" },
+                { hora: "a las cinco y cuarto", actividad: "hacer deporte", pronombre: "tú" },
+                { hora: "a las nueve y media", actividad: "cocinar", pronombre: "ella" },
+                { hora: "a las dos", actividad: "estudiar", pronombre: "tú" },
+                { hora: "a las ocho y cuarto", actividad: "escuchar música", pronombre: "yo" },
+                { hora: "a las catorce horas", actividad: "ir al parque", pronombre: "nosotros" },
+                { hora: "a las diez menos diez", actividad: "bailar", pronombre: "nosotros" }
+            ];
+
+            const isCorrect = correctPairs.some(pair =>
+                carta1.content === pair.hora &&
+                carta2.actividad === pair.actividad &&
+                carta2.pronombre === pair.pronombre
+            );
+
+            if (isCorrect) {
+                pairsFound++;
+                document.getElementById('feedback').textContent =
+                    `¡Correcto! "A ${carta1.content}, ${carta2.pronombre} ${carta2.actividad}."`;
+                document.getElementById('feedback').className = "feedback correct";
+
+                if (pairsFound === 10) {
+                    document.getElementById('feedback').textContent = "¡Ganaste! 🎉 Todas las parejas encontradas.";
+                    gameOver = true;
+                }
+            } else {
+                document.getElementById('feedback').textContent =
+                    `¡Casi! Ejemplo correcto: "A las siete de la mañana, yo desayuno."`;
+                document.getElementById('feedback').className = "feedback incorrect";
+
+                setTimeout(() => {
+                    selectedCards.forEach(carta => {
+                        carta.flipped = false;
+                    });
+                    selectedCards = [];
+                    renderCards();
+                }, 1500);
+            }
+
+            selectedCards = [];
+        }
+
+        // Reiniciar juego
+        document.getElementById('restart-btn').addEventListener('click', initGame);
+        initGame();
+    </script>
+</body>
+</html>
+
